@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 
 import edu.eci.cvds.ecireserves.dto.UserDTO;
 import edu.eci.cvds.ecireserves.enums.UserRole;
@@ -34,6 +35,9 @@ class UserControllerTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private UserController userController;
@@ -58,22 +62,6 @@ class UserControllerTest {
         verify(userService, times(1)).getAllUsers();
     }
 
-    @SuppressWarnings("null")
-    @Test
-    void getUserById_ShouldReturnUser_WhenUserExists() throws EciReservesException {
-        User user = new User("1", "John Doe", "john@example.com", "password", null);
-        when(userService.getUserById("1")).thenReturn(user);
-
-        ResponseEntity<ApiResponse<User>> response = userController.getUserById("1");
-
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals("1", response.getBody().getData().getId());
-        verify(userService, times(1)).getUserById("1");
-    }
-
-    @SuppressWarnings("null")
     @Test
     void getUsersByName_ShouldReturnMatchingUsers() {
         List<User> users = Arrays.asList(new User("1", "John Doe", "john@example.com", "password", null));

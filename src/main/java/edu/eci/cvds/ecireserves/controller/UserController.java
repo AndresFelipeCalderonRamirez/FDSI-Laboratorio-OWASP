@@ -3,8 +3,10 @@ package edu.eci.cvds.ecireserves.controller;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,13 +45,21 @@ public class UserController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Usuarios obtenidos exitosamente", userService.getAllUsers()));
     }
 
-    
+
     @GetMapping("/user/users/{id}")
     @PreAuthorize("hasAnyRole('ESTUDIANTE', 'ADMINISTRADOR', 'PROFESOR')")
-    @Operation(summary = "Obtener usuario por ID", description = "Busca un usuario en el sistema según su identificador único.")
+    @Operation(summary = "Obtener usuario por ID", description = "Un usuario solo puede consultar su propio perfil.")
     public ResponseEntity<ApiResponse<User>> getUserById(
-            @Parameter(description = "ID del usuario a buscar", required = true) @PathVariable("id") String id)
+            @Parameter(description = "ID del usuario a buscar", required = true) @PathVariable("id") String id,
+            Authentication authentication)   // ← parámetro nuevo
             throws EciReservesException {
+
+        User currentUser = userService.getUserByEmail(authentication.getName())
+                .orElseThrow(() -> new EciReservesException(EciReservesException.USER_NOT_FOUND));
+
+        if (!currentUser.getId().equals(id) && !isAdmin(authentication)) {
+            throw new AccessDeniedException("No tienes permiso para consultar el perfil de otro usuario.");
+        }
         return ResponseEntity.ok(new ApiResponse<>(true, "Usuario con id: " + id, userService.getUserById(id)));
     }
 
@@ -101,6 +111,11 @@ public class UserController {
             throws EciReservesException {
         userService.deleteUser(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Usuario eliminado", null));
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+            .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMINISTRADOR"));
     }
     
 }

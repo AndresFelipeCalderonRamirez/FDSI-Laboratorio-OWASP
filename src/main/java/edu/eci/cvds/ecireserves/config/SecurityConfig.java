@@ -51,17 +51,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                    .requestMatchers("/api/register", "/api/login", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                    .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
-                    .requestMatchers("/api/user/**").hasAnyRole("ESTUDIANTE", "ADMINISTRADOR", "PROFESOR")
-                    .anyRequest().authenticated()
+                        // Solo login y registro son públicos
+                        .requestMatchers("/api/register", "/api/login").permitAll()
+                        // Swagger solo para ADMINISTRADOR
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .hasRole("ADMINISTRADOR")
+                        .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers("/api/user/**").hasAnyRole("ESTUDIANTE", "ADMINISTRADOR", "PROFESOR")
+                        .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
-                    .accessDeniedHandler(accessDeniedHandler())
-                    .authenticationEntryPoint(new Http403ForbiddenEntryPoint())
-                )   
-                .sessionManagement(sessionManagement -> 
-                    sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .accessDeniedHandler(accessDeniedHandler())
+                        .authenticationEntryPoint(new Http403ForbiddenEntryPoint())
+                )
+                .sessionManagement(sessionManagement ->
+                        sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
         http.addFilterBefore(jwtRequestFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
