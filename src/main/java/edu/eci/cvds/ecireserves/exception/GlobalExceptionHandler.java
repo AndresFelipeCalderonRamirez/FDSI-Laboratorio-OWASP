@@ -1,5 +1,7 @@
 package edu.eci.cvds.ecireserves.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -13,6 +15,8 @@ import lombok.Generated;
 @Generated
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(EciReservesException.class)
     public ResponseEntity<ApiResponse<Void>> handleEciReservesException(EciReservesException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse<>(false, e.getMessage(), null));
@@ -20,7 +24,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(false, e.getMessage(), null));
+        log.error("Error interno no controlado", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(false, "Error interno del servidor", null));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -29,3 +35,4 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse<>(false, "Acceso denegado: No tienes permisos para esta operación.", null));
     }
 }
+
