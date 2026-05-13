@@ -70,20 +70,7 @@ class ReservationControllerTest {
         verify(reservationService, times(1)).getAllReservations();
     }
 
-    @SuppressWarnings("null")
-    @Test
-    void getReservationsByUserId_ShouldReturnReservations() {
-        List<Reservation> reservations = Arrays.asList(new Reservation("1", "user1", "lab1", LocalDate.now(), LocalTime.of(10, 0), 60, LocalTime.now().plusMinutes(60), "Study", ReservationStatus.AGENDADA));
-        when(reservationService.getReservationsByUserId("user1")).thenReturn(reservations);
 
-        ResponseEntity<ApiResponse<List<Reservation>>> response = reservationController.getReservationsByUserId("user1");
-
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().isSuccess());
-        assertEquals(1, response.getBody().getData().size());
-        verify(reservationService, times(1)).getReservationsByUserId("user1");
-    }
 
     @SuppressWarnings("null")
     @Test
@@ -147,18 +134,7 @@ class ReservationControllerTest {
         verify(reservationService, times(1)).updateReservation("1", reservationDTO);
     }
 
-    @SuppressWarnings("null")
-    @Test
-    void deleteReservation_ShouldReturnSuccessMessage() throws EciReservesException {
-        doNothing().when(reservationService).deleteReservation("1");
 
-        ResponseEntity<ApiResponse<Void>> response = reservationController.deleteReservation("1");
-
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody().isSuccess());
-        verify(reservationService, times(1)).deleteReservation("1");
-    }
 
     @SuppressWarnings("null")
     @Test

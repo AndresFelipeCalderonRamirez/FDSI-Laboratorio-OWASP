@@ -8,6 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.core.Authentication;
+import edu.eci.cvds.ecireserves.model.User;
+import edu.eci.cvds.ecireserves.service.UserService;
+import org.springframework.security.access.AccessDeniedException;
+
 import edu.eci.cvds.ecireserves.dto.ReservationDTO;
 import edu.eci.cvds.ecireserves.enums.ReservationStatus;
 import edu.eci.cvds.ecireserves.exception.EciReservesException;
@@ -24,9 +29,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 public class ReservationController {
 
     private final ReservationService reservationService;
+    private final UserService userService;
 
-    public ReservationController(ReservationService reservationService) {
+    public ReservationController(ReservationService reservationService, UserService userService) {
         this.reservationService = reservationService;
+        this.userService = userService;
     }
 
     @GetMapping("/user/reservations")
@@ -43,14 +50,6 @@ public class ReservationController {
             @Parameter(description = "ID de la reserva a buscar", required = true) @PathVariable("id") String id)
             throws EciReservesException {
         return ResponseEntity.ok(new ApiResponse<>(true, "Reserva con id " + id + " encontrada", reservationService.getReservationById(id)));
-    }
-
-    @GetMapping("/user/reservations/user/{userId}")
-    @PreAuthorize("hasAnyRole('ESTUDIANTE', 'ADMINISTRADOR', 'PROFESOR')")
-    @Operation(summary = "Obtener reservas por usuario", description = "Devuelve todas las reservas realizadas por un usuario específico.")
-    public ResponseEntity<ApiResponse<List<Reservation>>> getReservationsByUserId(
-            @Parameter(description = "ID del usuario", required = true) @PathVariable("userId") String userId) {
-        return ResponseEntity.ok(new ApiResponse<>(true, "Reservas del usuario con id: " + userId, reservationService.getReservationsByUserId(userId)));
     }
 
     @GetMapping("/user/laboratory/{laboratoryId}")
@@ -122,12 +121,32 @@ public class ReservationController {
     }
 
     @DeleteMapping("/user/reservations/{id}")
-    @PreAuthorize("hasAnyRole('ESTUDIANTE', 'ADMINISTRADOR', 'PROFESOR')")
-    @Operation(summary = "Eliminar una reserva", description = "Elimina una reserva del sistema según su ID.")
     public ResponseEntity<ApiResponse<Void>> deleteReservation(
-            @Parameter(description = "ID de la reserva a eliminar", required = true) @PathVariable("id") String id)
-            throws EciReservesException {
+            @PathVariable("id") String id,
+            Authentication auth) throws EciReservesException {
+        Reservation r = reservationService.getReservationById(id);
+        User me = userService.getUserByEmail(auth.getName())
+                .orElseThrow(() -> new EciReservesException(EciReservesException.USER_NOT_FOUND));
+        if (!r.getUserId().equals(me.getId()) && !isAdmin(auth))
+            throw new AccessDeniedException("No tienes permiso para eliminar esta reserva");
         reservationService.deleteReservation(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Reserva eliminada", null));
+    }
+
+    @GetMapping("/user/reservations/user/{userId}")
+    public ResponseEntity<ApiResponse<List<Reservation>>> getReservationsByUserId(
+            @PathVariable("userId") String userId,
+            Authentication auth) throws EciReservesException {
+        User me = userService.getUserByEmail(auth.getName())
+                .orElseThrow(() -> new EciReservesException(EciReservesException.USER_NOT_FOUND));
+        if (!me.getId().equals(userId) && !isAdmin(auth))
+            throw new AccessDeniedException("No tienes permiso para ver estas reservas");
+        return ResponseEntity.ok(new ApiResponse<>(true,
+                "Reservas del usuario con id: " + userId,
+                reservationService.getReservationsByUserId(userId)));
+    }
+    private boolean isAdmin(Authentication auth) {
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
     }
 }

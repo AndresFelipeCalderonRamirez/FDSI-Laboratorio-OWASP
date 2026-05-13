@@ -24,6 +24,19 @@ public class UserService {
     }
 
     /**
+     * Encode password using BCrypt. Centralizes all password hashing.
+     * Never call setPassword() directly without this method.
+     * @param rawPassword Raw password
+     * @return Encoded password
+     */
+    private String encodePassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.length() < 8) {
+            throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres");
+        }
+        return passwordEncoder.encode(rawPassword);
+    }
+
+    /**
      * Get all users
      * @return List of users
      */
@@ -54,7 +67,6 @@ public class UserService {
      * Get users by role
      * @param rol User role
      * @return List of users
-     * @throws EciReservesException
      */
     public List<User> getUsersByRol(UserRole rol) {
         return userRepository.findByRol(rol);
@@ -67,20 +79,19 @@ public class UserService {
      * @throws EciReservesException
      */
     public User createUser(UserDTO userDTO) throws EciReservesException {
-        if(userDTO.getName() == null || userDTO.getEmail() == null || userDTO.getPassword() == null || userDTO.getRol() == null) {
+        if (userDTO.getName() == null || userDTO.getEmail() == null || userDTO.getPassword() == null || userDTO.getRol() == null) {
             throw new EciReservesException(EciReservesException.USER_DATA_NOT_COMPLETE);
         }
-        if(userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
             throw new EciReservesException(EciReservesException.USER_EMAIL_ALREADY_EXISTS);
-        }else{
-            User user = new User();
-            user.setName(userDTO.getName());
-            user.setEmail(userDTO.getEmail());
-            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-            user.setRol(userDTO.getRol());
-    
-            return userRepository.save(user);
         }
+        User user = new User();
+        user.setName(userDTO.getName());
+        user.setEmail(userDTO.getEmail());
+        user.setPassword(encodePassword(userDTO.getPassword()));
+        user.setRol(userDTO.getRol());
+
+        return userRepository.save(user);
     }
 
     /**
@@ -92,14 +103,14 @@ public class UserService {
      */
     public User updateUser(String id, UserDTO userDTO) throws EciReservesException {
         User user = userRepository.findById(id).orElseThrow(() -> new EciReservesException(EciReservesException.USER_NOT_FOUND));
-        if(userDTO.getName() != null) user.setName(userDTO.getName());
-        if(userDTO.getEmail() != null && !user.getEmail().equals(userDTO.getEmail())) {
-            if(userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
+        if (userDTO.getName() != null) user.setName(userDTO.getName());
+        if (userDTO.getEmail() != null && !user.getEmail().equals(userDTO.getEmail())) {
+            if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
                 throw new EciReservesException(EciReservesException.USER_EMAIL_ALREADY_EXISTS);
             }
             user.setEmail(userDTO.getEmail());
         }
-        if(userDTO.getPassword() != null) user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        if (userDTO.getPassword() != null) user.setPassword(encodePassword(userDTO.getPassword()));
 
         return userRepository.save(user);
     }
@@ -110,13 +121,13 @@ public class UserService {
      * @throws EciReservesException
      */
     public void deleteUser(String id) throws EciReservesException {
-        if(!userRepository.existsById(id)){
+        if (!userRepository.existsById(id)) {
             throw new EciReservesException(EciReservesException.USER_NOT_FOUND);
         }
         userRepository.deleteById(id);
     }
 
-    public Optional<User> getUserByEmail(String email) {return userRepository.findByEmail(email);
-
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 }
